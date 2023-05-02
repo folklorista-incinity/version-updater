@@ -100,7 +100,7 @@ export class VersionUpdater {
                 targetVersion = versionMajor;
                 break;
             case VersionPart.Minor:
-                targetVersion = versionMajor;
+                targetVersion = versionMinor;
                 break;
             case VersionPart.Patch:
             default:
