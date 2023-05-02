@@ -28,6 +28,7 @@ npm run update-version
 
 - Skript lze spustit, pokud jsou v aktuálním repozitáři rozpracované (staged) soubory.
 - Ve vedlejší větvi skript nabídne checkout hlavní větve a merge původní, vedlejší větve.
+- Pokud je v hlavní větví, aktualizuje si commity (`pull`)
 - Skript lze spustit, pokud je na lokále od posledního tagu nějaký nezaverzovaný commit.
 - Skript se zeptá, o kolik má zvednout verzi (_major_, _feat/minor_ nebo _fix/patch_).
   - _TODO: výchozí hodnotu odhadne podle commitů_
