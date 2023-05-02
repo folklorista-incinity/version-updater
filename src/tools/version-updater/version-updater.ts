@@ -15,6 +15,9 @@ export class VersionUpdater {
     }
 
     async start() {
+        let answer: string;
+        let targetVersion: string;
+
         // pokud je v aktuálním gitu rozdělaná (staged) práce upozorní na to a ukončí běh
         const stagedCount = runCommandOrDie(`git diff --cached --numstat | wc -l`);
         if (parseInt(stagedCount)) {
@@ -28,7 +31,7 @@ export class VersionUpdater {
         // pokud je branch jiná než `master`, nabídne merge
         const currentBranch = runCommandOrDie(`git rev-parse --abbrev-ref HEAD`);
         if (currentBranch != 'master') {
-            const answer: string = await new Promise(resolve => {
+            answer = await new Promise(resolve => {
                 this.rl.question(`Jste ve větvi ${currentBranch}. Chcete pokračovat v master větvi a aktuální větev zmergeovat? [a/N] `, resolve)
             });
 
@@ -89,11 +92,9 @@ export class VersionUpdater {
         const versionMajor = this.version.raise(VersionPart.Major).getTag();
         const versionMinor = this.version.raise(VersionPart.Minor).getTag();
         const versionPatch = this.version.raise(VersionPart.Patch).getTag();
-        const answer: string = await new Promise(resolve => {
+        answer = await new Promise(resolve => {
             this.rl.question(`Jakým způsobem se má zvednout verze ${currentTag}?\n1. major <${versionMajor}>, 2. feat/minor <${versionMinor}>, 3.fix/patch <${versionPatch}> (1/2/3) [3] `, resolve)
         });
-
-        let targetVersion: string;
         switch (parseInt(answer)) {
             case VersionPart.Major:
                 targetVersion = versionMajor;
@@ -106,7 +107,24 @@ export class VersionUpdater {
                 targetVersion = versionPatch;
         }
 
-        this.rl.write(`OK, bude to ${targetVersion}\n`);
+        // Náhled changelogu
+        // TODO: pokusit se seskupit commity podle modulu
+        const now = new Date();
+        const changelog = `### ${targetVersion} (${now.toISOString().split('T')[0]})\n` + commitList.replace(/^(\S{7})\s(fix|feat|chore):/gm, '- **$2:**');
+        this.rl.write(`Záznam v changelogu changelog:\n${changelog}\n`);
+
+        answer = await new Promise(resolve => {
+            this.rl.question(`Pokračovat k zápisu a odeslání na server? (a/N) `, resolve)
+        });
+        switch (answer.toLowerCase()) {
+            case 'a':
+                break;
+            case 'n':
+            default:
+                this.rl.write(`Přerušeno na žádost uživatele, v repozitáři nebyly provedeny žádné změny.\n`);
+                this.stop();
+                return;
+        }
 
         runCommandOrDie(`git stash save --keep-index`);
 
@@ -120,10 +138,7 @@ export class VersionUpdater {
         }
         runCommandOrDie(`git add package.json`);
 
-        //   do changelogu přidá řádek s aktuálním datumem se všemi commity, které se pokusí seskupit podle modulu
-        const now = new Date();
-        const changelog = `### ${targetVersion} (${now.toISOString().split('T')[0]})\n` + commitList.replace(/^(\S{7})\s(fix|feat|chore):/gm, '- **$2:**');
-        this.rl.write('Lines added to changelog: ' + changelog);
+        //   záznam v changelogu
         runCommandOrDie(`sed -n -i 'p;2a ${changelog.replace(/\n/gm,'\\n')}\\n' CHANGELOG.md`)
         runCommandOrDie(`git add CHANGELOG.md`)
 
@@ -135,7 +150,7 @@ export class VersionUpdater {
         //   push commitu i s tagy `git push --atomic origin master <tag>`
         const pushCommit = runCommandOrDie(`git push --atomic origin master ${targetVersion}`)
 
-        this.rl.write(`No tak jo, asi už je hotovo.\n`);
+        this.rl.write(`Je hotovo. Tag ${targetVersion} byl odeslán na server.\n`);
         this.stop();
     }
 
@@ -143,7 +158,6 @@ export class VersionUpdater {
         this.rl.close();
     }
 }
-
 
 (async () => {
     const instance = new VersionUpdater();
