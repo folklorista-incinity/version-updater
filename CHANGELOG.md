@@ -1,5 +1,9 @@
 ## Change Log
 
+### v0.0.5 (2023-05-02)
+- **fix:** changelog fixed after quote injection
+- **fix:** VersionUpdater - fixed injection of quotes ('"`)
+
 ### v0.0.4 (2023-05-02)
 - **fix:** VersionUpdater - fix verzování
 - **fix:** VersionUpdater - formátování
