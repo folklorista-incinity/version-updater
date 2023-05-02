@@ -126,13 +126,15 @@ export class VersionUpdater {
                 return;
         }
 
-        runCommandOrDie(`git stash save --keep-index`);
+        const stashed = runCommandOrDie(`git stash save --keep-index`).startsWith('Saved');
 
         //   aktualizuje version v package.json
         const versionReplace = runCommandOrDie(`perl -i -lpe '$k+= s/"v${this.version.major}\.${this.version.minor}\.${this.version.patch}"/"${targetVersion}"/g; END{print "$k"}' package.json`);
         if (versionReplace != "1") {
             this.rl.write(`Nepodařilo se aktualizovat verzi v package.json.\n`);
-            runCommandOrDie(`git stash pop`);
+            if (stashed) {
+                runCommandOrDie(`git stash pop`);
+            }
             this.stop();
             return;
         }
@@ -145,7 +147,9 @@ export class VersionUpdater {
         //   commit a tag verze
         runCommandOrDie(`git commit -m "${targetVersion}" && git tag ${targetVersion}`)
 
-        runCommandOrDie(`git stash pop`);
+        if (stashed) {
+            runCommandOrDie(`git stash pop`);
+        }
 
         //   push commitu i s tagy `git push --atomic origin master <tag>`
         const pushCommit = runCommandOrDie(`git push --atomic origin master ${targetVersion}`)
