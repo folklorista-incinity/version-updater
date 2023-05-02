@@ -1,5 +1,8 @@
 ## Change Log
 
+### v1.0.0 (2023-05-02)
+- **chore:** README.md
+
 ### v0.0.5 (2023-05-02)
 - **fix:** changelog fixed after quote injection
 - **fix:** VersionUpdater - fixed injection of quotes ('"`)

@@ -1,6 +1,6 @@
 {
   "name": "version-updater",
-  "version": "v0.0.5",
+  "version": "v1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
