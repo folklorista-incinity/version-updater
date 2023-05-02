@@ -3,7 +3,9 @@
 ### v0.0.4 (2023-05-02)
 - **fix:** VersionUpdater - fix verzování
 - **fix:** VersionUpdater - formátování
-- **fix:** package.json - npm
+- **fix:** package.json - 'npm run update-version-compile'
+- **fix:** VersionUpdater - potvrzení changelogu před zápisem
+
 ### v0.0.3 (2023-05-02)
 - **fix:** VersionUpdater - fixed changelog
 - **fix:** changelog updated
