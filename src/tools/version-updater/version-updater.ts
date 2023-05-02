@@ -118,14 +118,17 @@ export class VersionUpdater {
             this.stop();
             return;
         }
+        runCommandOrDie(`git add package.json`);
 
         //   do changelogu přidá řádek s aktuálním datumem se všemi commity, které se pokusí seskupit podle modulu
-        const changelog = `\n### v11.492.1 (2023-04-25)\n` + commitList.replace(/^(\S{7})\s(fix|feat|chore):/gm, '**$2:**');
-        this.rl.write('changelog: ' + changelog);
-        runCommandOrDie(`sed -n -i 'p;2a ${changelog}\n' ./CHANGELOG.md`)
+        const now = new Date();
+        const changelog = `### ${targetVersion} (${now.toISOString().split('T')[0]})\n` + commitList.replace(/^(\S{7})\s(fix|feat|chore):/gm, '- **$2:**');
+        this.rl.write('Lines added to changelog: ' + changelog);
+        runCommandOrDie(`sed -n -i 'p;2a ${changelog.replace(/\n/gm,'\\n')}\\n' CHANGELOG.md`)
+        runCommandOrDie(`git add CHANGELOG.md`)
 
         //   commit a tag verze
-        runCommandOrDie(`git add package.json && git commit -m "${targetVersion}" && git tag ${targetVersion}`)
+        runCommandOrDie(`git commit -m "${targetVersion}" && git tag ${targetVersion}`)
 
         runCommandOrDie(`git stash pop`);
 
