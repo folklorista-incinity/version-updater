@@ -18,7 +18,7 @@ export class VersionUpdater {
         // pokud je v aktuálním gitu rozdělaná (staged) práce upozorní na to a ukončí běh
         const stagedCount = runCommandOrDie(`git diff --cached --numstat | wc -l`);
         if (parseInt(stagedCount)) {
-            this.rl.write(`Nejprve si ukliďte, máte v repozitáři rozpracované (stashed) soubory.\n`);
+            this.rl.write(`Nejprve si ukliďte, máte v repozitáři rozpracované (staged) soubory.\n`);
 
             this.stop();
 
@@ -66,7 +66,7 @@ export class VersionUpdater {
         // kontrola, že aktuální verze sedí s verzí v package.json
         const packageVersion = require("../../../package.json").version;
         if (currentTag != packageVersion) {
-            this.rl.write(`Verze v package.json (${packageVersion}) neodpovídá tagu (${currentTag})!`);
+            this.rl.write(`Verze v package.json (${packageVersion}) neodpovídá tagu (${currentTag}).\n`);
             this.stop();
             return;
         }
@@ -79,6 +79,9 @@ export class VersionUpdater {
             return;
         }
 
+        const commitList: string = runCommandOrDie(`git rev-list ${currentTag}..HEAD --oneline`);
+        this.rl.write(`Toto jsou commity od posledního tagu:\n` + commitList.replace(/^(\S{7})\s/gm, '- $1: ') + "\n");
+
         // rozparsování verze
         this.version = new Version(currentTag);
 
@@ -87,7 +90,7 @@ export class VersionUpdater {
         const versionMinor = this.version.raise(VersionPart.Minor).getTag();
         const versionPatch = this.version.raise(VersionPart.Patch).getTag();
         const answer: string = await new Promise(resolve => {
-            this.rl.question(`Jakým způsobem se má zvednout verze ${currentTag}? 1. major (${versionMajor}), 2. feat/minor (${versionMinor}), 3.fix/patch (${versionPatch}) [3]`, resolve)
+            this.rl.question(`Jakým způsobem se má zvednout verze ${currentTag}?\n1. major <${versionMajor}>, 2. feat/minor <${versionMinor}>, 3.fix/patch <${versionPatch}> (1/2/3) [3] `, resolve)
         });
 
         let targetVersion: string;
@@ -105,25 +108,31 @@ export class VersionUpdater {
 
         this.rl.write(`OK, bude to ${targetVersion}\n`);
 
-        //   do changelogu přidá řádek s aktuálním datumem se všemi commity, které se pokusí seskupit podle modulu
-
-        const commitList = runCommandOrDie(`git rev-list ${currentTag}..HEAD --oneline`);
-        this.rl.write(`Toto jsou commity od posledního tagu:\n` + commitList + "\n");
+        runCommandOrDie(`git stash save --keep-index`);
 
         //   aktualizuje version v package.json
         const versionReplace = runCommandOrDie(`perl -i -lpe '$k+= s/"v${this.version.major}\.${this.version.minor}\.${this.version.patch}"/"${targetVersion}"/g; END{print "$k"}' package.json`);
         if (versionReplace != "1") {
-            this.rl.write(`Nepodařilo se aktualizovat verzi v package.json!`);
+            this.rl.write(`Nepodařilo se aktualizovat verzi v package.json.\n`);
+            runCommandOrDie(`git stash pop`);
             this.stop();
             return;
         }
 
+        //   do changelogu přidá řádek s aktuálním datumem se všemi commity, které se pokusí seskupit podle modulu
+        const changelog = `\n### v11.492.1 (2023-04-25)\n` + commitList.replace(/^(\S{7})\s(fix|feat|chore):/gm, '**$2:**');
+        this.rl.write('changelog: ' + changelog);
+        runCommandOrDie(`sed -n -i 'p;2a ${changelog}\n' ./CHANGELOG.md`)
+
         //   commit a tag verze
-        // const commandCommit = runCommandOrDie(`git add package.json && git commit -m "${targetVersion}" && git tag ${targetVersion}`)
+        runCommandOrDie(`git add package.json && git commit -m "${targetVersion}" && git tag ${targetVersion}`)
+
+        runCommandOrDie(`git stash pop`);
 
         //   push commitu i s tagy `git push --atomic origin master <tag>`
-        // const pushCommit = runCommandOrDie(`git push --atomic origin master ${targetVersion}`)
+        const pushCommit = runCommandOrDie(`git push --atomic origin master ${targetVersion}`)
 
+        this.rl.write(`No tak jo, asi už je hotovo.\n`);
         this.stop();
     }
 
