@@ -1,5 +1,8 @@
 ## Change Log
 
+### v1.0.2 (2023-05-02)
+- **fix:** VersionUpdater - místo pushe se zobrazí pouze výzva
+
 ### v1.0.1 (2023-05-02)
 - **fix:** VersionUpdater - obnova ze stashe, jen když je co obnovit
 
