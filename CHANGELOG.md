@@ -1,5 +1,9 @@
 ## Change Log
 
+### v0.0.3 (2023-05-02)
+- **fix:** VersionUpdater - fixed changelog
+- **fix:** changelog updated
+
 ### v0.0.2 (2023-05-02)
 - **fix:** VersionUpdater - changelog
 - **fix:** changelog added
