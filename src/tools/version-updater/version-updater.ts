@@ -1,8 +1,10 @@
 import * as readline from 'readline';
-import { exec, execSync } from 'child_process';
+import { execSync } from 'child_process';
+import { Version, VersionPart } from './lib/version';
 
 export class VersionUpdater {
     private rl: readline.Interface;
+    private version: Version;
 
     constructor() {
         this.rl = readline.createInterface({
@@ -16,7 +18,7 @@ export class VersionUpdater {
         // pokud je v aktuálním gitu rozdělaná (staged) práce upozorní na to a ukončí běh
         const stagedCount = runCommandOrDie(`git diff --cached --numstat | wc -l`);
         if (parseInt(stagedCount)) {
-            this.rl.write('Nejprve si ukliďte, máte v repozitáři rozpracované (stashed) soubory.');
+            this.rl.write(`Nejprve si ukliďte, máte v repozitáři rozpracované (stashed) soubory.\n`);
 
             this.stop();
 
@@ -34,26 +36,26 @@ export class VersionUpdater {
                 case 'a':
                     const checkoutResult = runCommandOrDie(`git checkout master --quiet`, true);
                     if (checkoutResult != '0') {
-                        this.rl.write('Checkout nelze provést, já radši končím.');
+                        this.rl.write(`Checkout nelze provést, já radši končím.\n`);
                         this.stop();
                         return;
                     }
                     const pullResult = runCommandOrDie(`git pull --quiet`, true);
                     if (pullResult != '0') {
-                        this.rl.write('Pull nelze provést, já radši končím.');
+                        this.rl.write(`Pull nelze provést, já radši končím.\n`);
                         this.stop();
                         return;
                     }
                     const mergeResult = runCommandOrDie(`git merge ${currentBranch}--quiet`, true);
                     if (mergeResult != '0') {
-                        this.rl.write('Merge nelze provést, já radši končím.');
+                        this.rl.write(`Merge nelze provést, já radši končím.\n`);
                         this.stop();
                         return;
                     }
                     break;
                 case 'n':
                 default:
-                    this.rl.write('OK, tak já radši končím.');
+                    this.rl.write(`OK, tak já radši končím.\n`);
                     this.stop();
                     return;
             }
@@ -72,17 +74,55 @@ export class VersionUpdater {
         // kontrola, že je na masteru od posledního tagu nějaký nezatagovaný commit
         const untaggedCount = runCommandOrDie(`git rev-list ${currentTag}..HEAD | wc -l`)
         if (!parseInt(untaggedCount)) {
-            this.rl.write('V masteru není žádný nezatagovaný commit, není z čeho vyrábět novou verzi. Končím.');
+            this.rl.write(`V masteru není žádný nezatagovaný commit, není z čeho vyrábět novou verzi. Končím.\n`);
             this.stop();
             return;
         }
 
-        //   zeptá se, o kolik má zvednout verzi (_feat/major_ nebo _fix/patch_). Výchozí hodnotu skript odhadne podle commitů
-        //   do changelogu přidá řádek s aktuálním datumem se všemi commity, které se pokusí seskupit podle modulu
-        //   commit verze `git commit -m "<tag>"`
-        //   tag verze `git tage <tag>`
-        //   push commitu i s tagy `git push --atomic origin master <tag>`
+        // rozparsování verze
+        this.version = new Version(currentTag);
 
+        //   zeptá se, o kolik má zvednout verzi (_feat/major_ nebo _fix/patch_). Výchozí hodnotu skript odhadne podle commitů
+        const versionMajor = this.version.raise(VersionPart.Major).getTag();
+        const versionMinor = this.version.raise(VersionPart.Minor).getTag();
+        const versionPatch = this.version.raise(VersionPart.Patch).getTag();
+        const answer: string = await new Promise(resolve => {
+            this.rl.question(`Jakým způsobem se má zvednout verze ${currentTag}? 1. major (${versionMajor}), 2. feat/minor (${versionMinor}), 3.fix/patch (${versionPatch}) [3]`, resolve)
+        });
+
+        let targetVersion: string;
+        switch (parseInt(answer)) {
+            case VersionPart.Major:
+                targetVersion = versionMajor;
+                break;
+            case VersionPart.Minor:
+                targetVersion = versionMajor;
+                break;
+            case VersionPart.Patch:
+            default:
+                targetVersion = versionPatch;
+        }
+
+        this.rl.write(`OK, bude to ${targetVersion}\n`);
+
+        //   do changelogu přidá řádek s aktuálním datumem se všemi commity, které se pokusí seskupit podle modulu
+
+        const commitList = runCommandOrDie(`git rev-list ${currentTag}..HEAD --oneline`);
+        this.rl.write(`Toto jsou commity od posledního tagu:\n` + commitList + "\n");
+
+        //   aktualizuje version v package.json
+        const versionReplace = runCommandOrDie(`perl -i -lpe '$k+= s/"v${this.version.major}\.${this.version.minor}\.${this.version.patch}"/"${targetVersion}"/g; END{print "$k"}' package.json`);
+        if (versionReplace != "1") {
+            this.rl.write(`Nepodařilo se aktualizovat verzi v package.json!`);
+            this.stop();
+            return;
+        }
+
+        //   commit a tag verze
+        // const commandCommit = runCommandOrDie(`git add package.json && git commit -m "${targetVersion}" && git tag ${targetVersion}`)
+
+        //   push commitu i s tagy `git push --atomic origin master <tag>`
+        // const pushCommit = runCommandOrDie(`git push --atomic origin master ${targetVersion}`)
 
         this.stop();
     }
