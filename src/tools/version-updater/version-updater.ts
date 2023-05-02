@@ -83,7 +83,7 @@ export class VersionUpdater {
         }
 
         const commitList: string = runCommandOrDie(`git rev-list ${currentTag}..HEAD --oneline`);
-        this.rl.write(`Toto jsou commity od posledního tagu:\n` + commitList.replace(/^(\S{7})\s/gm, '- $1: ') + "\n");
+        this.rl.write(`Commity od posledního tagu ${currentTag}:\n\n${commitList.replace(/^(\S{7})\s/gm, '    - $1: ')}\n\n`);
 
         // rozparsování verze
         this.version = new Version(currentTag);
@@ -111,7 +111,7 @@ export class VersionUpdater {
         // TODO: pokusit se seskupit commity podle modulu
         const now = new Date();
         const changelog = `### ${targetVersion} (${now.toISOString().split('T')[0]})\n` + commitList.replace(/^(\S{7})\s(fix|feat|chore):/gm, '- **$2:**');
-        this.rl.write(`Záznam v changelogu changelog:\n${changelog}\n`);
+        this.rl.write(`Náhled zápisu do changelogu:\n\n    ${changelog.replace(/\n/gm, `\n    `)}\n\n`);
 
         answer = await new Promise(resolve => {
             this.rl.question(`Pokračovat k zápisu a odeslání na server? (a/N) `, resolve)
@@ -139,7 +139,7 @@ export class VersionUpdater {
         runCommandOrDie(`git add package.json`);
 
         //   záznam v changelogu
-        runCommandOrDie(`sed -n -i 'p;2a ${changelog.replace(/\n/gm,'\\n')}\\n' CHANGELOG.md`)
+        runCommandOrDie(`sed -n -i 'p;2a ${changelog.replace(/\n/gm, '\\n')}\\n' CHANGELOG.md`)
         runCommandOrDie(`git add CHANGELOG.md`)
 
         //   commit a tag verze
