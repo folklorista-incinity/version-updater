@@ -1,5 +1,9 @@
 ## Change Log
 
+### v0.0.4 (2023-05-02)
+- **fix:** VersionUpdater - fix verzování
+- **fix:** VersionUpdater - formátování
+- **fix:** package.json - npm
 ### v0.0.3 (2023-05-02)
 - **fix:** VersionUpdater - fixed changelog
 - **fix:** changelog updated
