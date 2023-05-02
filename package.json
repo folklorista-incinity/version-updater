@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "update-version": "node ./dist/tools/version-updater/version-updater.js",
-    "update-version-test": "tsc -p tsconfig-version-updater.json && npm run update-version"
+    "update-version-compile": "tsc -p tsconfig-version-updater.json && npm run update-version"
   },
   "repository": {
     "type": "git",
