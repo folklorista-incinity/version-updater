@@ -139,7 +139,7 @@ export class VersionUpdater {
         runCommandOrDie(`git add package.json`);
 
         //   záznam v changelogu
-        runCommandOrDie(`sed -n -i 'p;2a ${changelog.replace(/\n/gm, '\\n')}\\n' CHANGELOG.md`)
+        runCommandOrDie(`sed -n -i "p;2a ${changelog.replace(/\n/gm, '\\n').replace(/(\"|\`)/gm, '\\$1').replace(/\`/gm, '\`')}\\n" CHANGELOG.md`)
         runCommandOrDie(`git add CHANGELOG.md`)
 
         //   commit a tag verze
