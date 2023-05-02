@@ -152,9 +152,12 @@ export class VersionUpdater {
         }
 
         //   push commitu i s tagy `git push --atomic origin master <tag>`
+        /*
         const pushCommit = runCommandOrDie(`git push --atomic origin master ${targetVersion}`)
-
         this.rl.write(`Je hotovo. Tag ${targetVersion} byl odeslán na server.\n`);
+        */
+        this.rl.write(`Verze ${targetVersion} je připravena, příkazem \`git push --atomic origin master ${targetVersion}\` ji odešlete na server.\n`);
+
         this.stop();
     }
 
