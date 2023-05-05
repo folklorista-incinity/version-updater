@@ -17,7 +17,6 @@ export class VersionUpdater {
             input: process.stdin,
             output: process.stdout
         });
-
     }
 
     async start() {
@@ -28,10 +27,7 @@ export class VersionUpdater {
         const stagedCount = runCommandOrDie(`git diff --cached --numstat | wc -l`);
         if (parseInt(stagedCount)) {
             this.rl.write(`Nejprve si ukliďte, máte v repozitáři rozpracované (staged) soubory.\n`);
-
-            this.stop();
-
-            return;
+            return this.stop();
         }
 
         // pokud je branch jiná než `master`, nabídne merge
@@ -46,35 +42,30 @@ export class VersionUpdater {
                     const checkoutResult = runCommandOrDie(`git checkout master --quiet`, true);
                     if (checkoutResult != '0') {
                         this.rl.write(`Checkout nelze provést, já radši končím.\n`);
-                        this.stop();
-                        return;
+                        return this.stop();
                     }
                     const pullResult = runCommandOrDie(`git pull --quiet`, true);
                     if (pullResult != '0') {
                         this.rl.write(`Pull nelze provést, já radši končím.\n`);
-                        this.stop();
-                        return;
+                        return this.stop();
                     }
                     const mergeResult = runCommandOrDie(`git merge ${currentBranch}--quiet`, true);
                     if (mergeResult != '0') {
                         this.rl.write(`Merge nelze provést, já radši končím.\n`);
-                        this.stop();
-                        return;
+                        return this.stop();
                     }
                     break;
                 case 'n':
                 default:
                     this.rl.write(`OK, tak já radši končím.\n`);
-                    this.stop();
-                    return;
+                    return this.stop();
             }
         } else {
             runCommandOrDie(`git fetch origin`);
             const aheadBehind = runCommandOrDie(`git rev-list --left-right --count master...origin/master`);
             if (aheadBehind !== "0	0") {
                 this.rl.write(`Na serveru jsou změny. Proveďte git pull. Končím.\n`);
-                this.stop();
-                return;
+                return this.stop();
             }
         }
 
@@ -84,16 +75,14 @@ export class VersionUpdater {
         const packageVersion = require("../../../package.json").version;
         if (currentTag != packageVersion) {
             this.rl.write(`Verze v package.json (${packageVersion}) neodpovídá tagu (${currentTag}).\n`);
-            this.stop();
-            return;
+            return this.stop();
         }
 
         // kontrola, že je na masteru od posledního tagu nějaký nezatagovaný commit
         const untaggedCount = runCommandOrDie(`git rev-list ${currentTag}..HEAD | wc -l`)
         if (!parseInt(untaggedCount)) {
             this.rl.write(`V masteru není žádný nezatagovaný commit, není z čeho vyrábět novou verzi. Končím.\n`);
-            this.stop();
-            return;
+            return this.stop();
         }
 
         const commitList: string = runCommandOrDie(`git rev-list ${currentTag}..HEAD --oneline`);
@@ -134,8 +123,7 @@ export class VersionUpdater {
             case 'n':
             default:
                 this.rl.write(`Přerušeno na žádost uživatele, v repozitáři nebyly provedeny žádné změny.\n`);
-                this.stop();
-                return;
+                return this.stop();
         }
 
         const stashed = runCommandOrDie(`git stash save --keep-index`).startsWith('Saved');
@@ -147,8 +135,7 @@ export class VersionUpdater {
             if (stashed) {
                 runCommandOrDie(`git stash pop`);
             }
-            this.stop();
-            return;
+            return this.stop();
         }
         runCommandOrDie(`git add package.json`);
 
@@ -175,12 +162,12 @@ export class VersionUpdater {
             default:
         }
 
-        this.stop();
-        return;
+        return this.stop();
     }
 
-    stop() {
+    stop(): void {
         this.rl.close();
+        return;
     }
 
     getChangelogEntry(commitList: string, targetVersion: string): string {
