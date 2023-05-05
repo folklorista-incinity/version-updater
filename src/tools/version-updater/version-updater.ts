@@ -91,12 +91,12 @@ export class VersionUpdater {
         // rozparsování verze
         this.version = new Version(currentTag);
 
-        // zeptá se, o kolik má zvednout verzi (_feat/major_ nebo _fix/patch_). Výchozí hodnotu skript odhadne podle commitů
+        // zeptá se, o kolik má zvednout verzi (_feat/major_ nebo _fix/patch_).
         const versionMajor = this.version.raise(VersionPart.Major).getTag();
         const versionMinor = this.version.raise(VersionPart.Minor).getTag();
         const versionPatch = this.version.raise(VersionPart.Patch).getTag();
         answer = await new Promise(resolve => {
-            this.rl.question(`Jakým způsobem se má zvednout verze ${currentTag}?\n1. major <${versionMajor}>, 2. feat/minor <${versionMinor}>, 3.fix/patch <${versionPatch}> (1/2/3) [3] `, resolve)
+            this.rl.question(`Jakým způsobem se má zvednout verze ${currentTag}?\n    1. major <${versionMajor}>\n    2. minor <${versionMinor}>\n    3. patch <${versionPatch}>\n(1/2/3) [3] `, resolve)
         });
         switch (parseInt(answer)) {
             case VersionPart.Major:
