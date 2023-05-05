@@ -2,6 +2,12 @@ import * as readline from 'readline';
 import { execSync } from 'child_process';
 import { Version, VersionPart } from './lib/version';
 
+interface AnalyzedCommits {
+    [moduleName: string]: {
+        [versionPart: string]: string[]
+    }
+}
+
 export class VersionUpdater {
     private rl: readline.Interface;
     private version: Version;
@@ -62,6 +68,14 @@ export class VersionUpdater {
                     this.stop();
                     return;
             }
+        } else {
+            runCommandOrDie(`git fetch origin`);
+            const aheadBehind = runCommandOrDie(`git rev-list --left-right --count master...origin/master`);
+            if (aheadBehind !== "0	0") {
+                this.rl.write(`Na serveru jsou změny. Proveďte git pull. Končím.\n`);
+                this.stop();
+                return;
+            }
         }
 
         const currentTag = runCommandOrDie(`git describe --tags --abbrev=0`);
@@ -83,12 +97,12 @@ export class VersionUpdater {
         }
 
         const commitList: string = runCommandOrDie(`git rev-list ${currentTag}..HEAD --oneline`);
-        this.rl.write(`Commity od posledního tagu ${currentTag}:\n\n${commitList.replace(/^(\S{7})\s/gm, '    - $1: ')}\n\n`);
+        this.rl.write(`Commity od posledního tagu ${currentTag}:\n\n${commitList.replace(/^(\S{7,8})\s/gm, '    - $1: ')}\n\n`);
 
         // rozparsování verze
         this.version = new Version(currentTag);
 
-        //   zeptá se, o kolik má zvednout verzi (_feat/major_ nebo _fix/patch_). Výchozí hodnotu skript odhadne podle commitů
+        // zeptá se, o kolik má zvednout verzi (_feat/major_ nebo _fix/patch_). Výchozí hodnotu skript odhadne podle commitů
         const versionMajor = this.version.raise(VersionPart.Major).getTag();
         const versionMinor = this.version.raise(VersionPart.Minor).getTag();
         const versionPatch = this.version.raise(VersionPart.Patch).getTag();
@@ -107,10 +121,8 @@ export class VersionUpdater {
                 targetVersion = versionPatch;
         }
 
-        // Náhled changelogu
-        // TODO: pokusit se seskupit commity podle modulu
-        const now = new Date();
-        const changelog = `### ${targetVersion} (${now.toISOString().split('T')[0]})\n` + commitList.replace(/^(\S{7})\s(fix|feat|chore):/gm, '- **$2:**');
+        // náhled changelogu
+        const changelog = this.getChangelogEntry(commitList, targetVersion);
         this.rl.write(`Náhled zápisu do changelogu:\n\n    ${changelog.replace(/\n/gm, `\n    `)}\n\n`);
 
         answer = await new Promise(resolve => {
@@ -128,7 +140,7 @@ export class VersionUpdater {
 
         const stashed = runCommandOrDie(`git stash save --keep-index`).startsWith('Saved');
 
-        //   aktualizuje version v package.json
+        // aktualizuje version v package.json
         const versionReplace = runCommandOrDie(`perl -i -lpe '$k+= s/"v${this.version.major}\.${this.version.minor}\.${this.version.patch}"/"${targetVersion}"/g; END{print "$k"}' package.json`);
         if (versionReplace != "1") {
             this.rl.write(`Nepodařilo se aktualizovat verzi v package.json.\n`);
@@ -140,29 +152,88 @@ export class VersionUpdater {
         }
         runCommandOrDie(`git add package.json`);
 
-        //   záznam v changelogu
+        // záznam v changelogu
         runCommandOrDie(`sed -n -i "p;2a ${changelog.replace(/\n/gm, '\\n').replace(/(\"|\`)/gm, '\\$1').replace(/\`/gm, '\`')}\\n" CHANGELOG.md`)
         runCommandOrDie(`git add CHANGELOG.md`)
 
-        //   commit a tag verze
+        // commit a tag verze
         runCommandOrDie(`git commit -m "${targetVersion}" && git tag ${targetVersion}`)
 
         if (stashed) {
             runCommandOrDie(`git stash pop`);
         }
 
-        //   push commitu i s tagy `git push --atomic origin master <tag>`
-        /*
-        const pushCommit = runCommandOrDie(`git push --atomic origin master ${targetVersion}`)
-        this.rl.write(`Je hotovo. Tag ${targetVersion} byl odeslán na server.\n`);
-        */
-        this.rl.write(`Verze ${targetVersion} je připravena, příkazem \`git push --atomic origin master ${targetVersion}\` ji odešlete na server.\n`);
+        answer = await new Promise(resolve => {
+            this.rl.question(`Verze ${targetVersion} je připravena, chcete ji pushnout? (a/N) `, resolve)
+        });
+        switch (answer.toLowerCase()) {
+            case 'a':
+                const pushCommit = runCommandOrDie(`git push --atomic origin master ${targetVersion}`)
+                this.rl.write(`Je hotovo. Tag ${targetVersion} byl odeslán na server.\n`);
+                break;
+            case 'n':
+            default:
+        }
 
         this.stop();
+        return;
     }
 
     stop() {
         this.rl.close();
+    }
+
+    getChangelogEntry(commitList: string, targetVersion: string): string {
+        let rows: string[] = [];
+
+        const now = new Date();
+        rows.push(`### ${targetVersion} (${now.toISOString().split('T')[0]})\n`);
+
+        const analyzed = this.analyzeCommits(commitList);
+        for (const moduleName in analyzed) {
+            rows.push(...['chore', 'feat', 'fix'].map((versionPart) => this.getChangelogLine(analyzed, moduleName, versionPart)).filter(l => l != ""));
+        }
+        return rows.join(`\n`)
+    }
+
+    getChangelogLine(analyzed: AnalyzedCommits, moduleName: string, versionPart: string): string {
+        let rows = [];
+        if (versionPart in analyzed[moduleName]) {
+            let row = `- **${versionPart}:** ` + moduleName;
+            if (analyzed[moduleName][versionPart].length) {
+                row += ' - ' + analyzed[moduleName][versionPart].join(', ');
+            }
+            rows.push(row);
+        }
+        return rows.filter(r => r).join(`\n`);
+    }
+
+    analyzeCommits(commitList: string): AnalyzedCommits {
+        const result: AnalyzedCommits = {};
+        const regex = /^(\S{7,8})\s(fix|feat|chore):(\s*[^-\n]*)-?(.*)$/gm;
+        let m;
+
+        while ((m = regex.exec(commitList)) !== null) {
+            if (m.index === regex.lastIndex) {
+                regex.lastIndex++;
+            }
+
+            const versionPart = m[2].trim();
+            const moduleName = m[3].trim();
+            const message = m[4].trim();
+
+            if (!(moduleName in result)) {
+                result[moduleName] = {};
+            }
+            if (!(versionPart in result[moduleName])) {
+                result[moduleName][versionPart] = [];
+            }
+            if (message.length) {
+                result[moduleName][versionPart].push(message);
+            }
+        }
+
+        return result;
     }
 }
 
