@@ -63,7 +63,16 @@ export class VersionUpdater {
         } else {
             runCommandOrDie(`git fetch origin`);
             const aheadBehind = runCommandOrDie(`git rev-list --left-right --count master...origin/master`);
-            if (aheadBehind !== "0	0") {
+            const regex = new RegExp('^\\d*\\t(\\d*)$', 'gm');
+            let behind: number;
+            let m;
+            if ((m = regex.exec(aheadBehind)) !== null) {
+                if (m.index === regex.lastIndex) {
+                    regex.lastIndex++;
+                }
+                behind = parseInt(m[1]);
+            }
+            if (behind !== 0) {
                 this.rl.write(`Na serveru jsou změny. Proveďte git pull. Končím.\n`);
                 return this.stop();
             }
