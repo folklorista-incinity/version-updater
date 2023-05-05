@@ -24,61 +24,53 @@ export class VersionUpdater {
         let targetVersion: string;
 
         // pokud je v aktuálním gitu rozdělaná (staged) práce upozorní na to a ukončí běh
-        const stagedCount = runCommandOrDie(`git diff --cached --numstat | wc -l`);
-        if (parseInt(stagedCount)) {
+        if (this.getStagedCount()) {
             this.rl.write(`Nejprve si ukliďte, máte v repozitáři rozpracované (staged) soubory.\n`);
             return this.stop();
         }
 
         // pokud je branch jiná než `master`, nabídne merge
-        const currentBranch = runCommandOrDie(`git rev-parse --abbrev-ref HEAD`);
+        const currentBranch = this.getCurrentBranch();
         if (currentBranch != 'master') {
             answer = await new Promise(resolve => {
                 this.rl.question(`Jste ve větvi ${currentBranch}. Chcete pokračovat v master větvi a aktuální větev zmergeovat? [a/N] `, resolve)
             });
-
             switch (answer.toLowerCase()) {
                 case 'a':
-                    const checkoutResult = runCommandOrDie(`git checkout master --quiet`, true);
-                    if (checkoutResult != '0') {
-                        this.rl.write(`Checkout nelze provést, já radši končím.\n`);
+                    if (!this.checkout()) {
+                        this.rl.write(`Checkout nelze provést.\n`);
                         return this.stop();
                     }
-                    const pullResult = runCommandOrDie(`git pull --quiet`, true);
-                    if (pullResult != '0') {
-                        this.rl.write(`Pull nelze provést, já radši končím.\n`);
+                    if (!this.canPull()) {
+                        this.rl.write(`Na serveru jsou změny nad commitnutými soubory. Proveďte nejprve git pull.\n`);
                         return this.stop();
                     }
-                    const mergeResult = runCommandOrDie(`git merge ${currentBranch}--quiet`, true);
-                    if (mergeResult != '0') {
-                        this.rl.write(`Merge nelze provést, já radši končím.\n`);
+                    if (!this.pull()) {
+                        this.rl.write(`Pull nelze provést.\n`);
+                        return this.stop();
+                    }
+                    if (!this.merge(currentBranch)) {
+                        this.rl.write(`Merge nelze provést.\n`);
                         return this.stop();
                     }
                     break;
                 case 'n':
                 default:
-                    this.rl.write(`OK, tak já radši končím.\n`);
+                    this.rl.write(`OK, ukončeno zásahem uživatele.\n`);
                     return this.stop();
             }
         } else {
-            runCommandOrDie(`git fetch origin`);
-            const aheadBehind = runCommandOrDie(`git rev-list --left-right --count master...origin/master`);
-            const regex = new RegExp('^\\d*\\t(\\d*)$', 'gm');
-            let behind: number;
-            let m;
-            if ((m = regex.exec(aheadBehind)) !== null) {
-                if (m.index === regex.lastIndex) {
-                    regex.lastIndex++;
-                }
-                behind = parseInt(m[1]);
+            if (!this.canPull()) {
+                this.rl.write(`Na serveru jsou změny nad ovlivněnými soubory. Proveďte nejprve git pull.\n`);
+                return this.stop();
             }
-            if (behind !== 0) {
-                this.rl.write(`Na serveru jsou změny. Proveďte git pull. Končím.\n`);
+            if (!this.pull()) {
+                this.rl.write(`Pull nelze provést.\n`);
                 return this.stop();
             }
         }
 
-        const currentTag = runCommandOrDie(`git describe --tags --abbrev=0`);
+        const currentTag = this.getCurrentTag();
 
         // kontrola, že aktuální verze sedí s verzí v package.json
         const packageVersion = require("../../../package.json").version;
@@ -88,13 +80,12 @@ export class VersionUpdater {
         }
 
         // kontrola, že je na masteru od posledního tagu nějaký nezatagovaný commit
-        const untaggedCount = runCommandOrDie(`git rev-list ${currentTag}..HEAD | wc -l`)
-        if (!parseInt(untaggedCount)) {
-            this.rl.write(`V masteru není žádný nezatagovaný commit, není z čeho vyrábět novou verzi. Končím.\n`);
+        if (!this.getUntaggedCount(currentTag)) {
+            this.rl.write(`V masteru není žádný nezatagovaný commit, není z čeho vyrábět novou verzi.\n`);
             return this.stop();
         }
 
-        const commitList: string = runCommandOrDie(`git rev-list ${currentTag}..HEAD --oneline`);
+        const commitList = this.getCommitList(currentTag);
         this.rl.write(`Commity od posledního tagu ${currentTag}:\n\n${commitList.replace(/^(\S{7,8})\s/gm, '    - $1: ')}\n\n`);
 
         // rozparsování verze
@@ -135,28 +126,27 @@ export class VersionUpdater {
                 return this.stop();
         }
 
-        const stashed = runCommandOrDie(`git stash save --keep-index`).startsWith('Saved');
+        const stashed = this.stashSave();
 
         // aktualizuje version v package.json
-        const versionReplace = runCommandOrDie(`perl -i -lpe '$k+= s/"v${this.version.major}\.${this.version.minor}\.${this.version.patch}"/"${targetVersion}"/g; END{print "$k"}' package.json`);
-        if (versionReplace != "1") {
+        if (this.updatePackageJson(targetVersion)) {
             this.rl.write(`Nepodařilo se aktualizovat verzi v package.json.\n`);
             if (stashed) {
-                runCommandOrDie(`git stash pop`);
+                this.stashPop();
             }
             return this.stop();
         }
-        runCommandOrDie(`git add package.json`);
+        this.add(`package.json`);
 
         // záznam v changelogu
-        runCommandOrDie(`sed -n -i "p;2a ${changelog.replace(/\n/gm, '\\n').replace(/(\"|\`)/gm, '\\$1').replace(/\`/gm, '\`')}\\n" CHANGELOG.md`)
-        runCommandOrDie(`git add CHANGELOG.md`)
+        this.updateChangelog(changelog);
+        this.add(`CHANGELOG.md`);
 
         // commit a tag verze
-        runCommandOrDie(`git commit -m "${targetVersion}" && git tag ${targetVersion}`)
+        this.commitTag(targetVersion);
 
         if (stashed) {
-            runCommandOrDie(`git stash pop`);
+            this.stashPop();
         }
 
         answer = await new Promise(resolve => {
@@ -164,7 +154,7 @@ export class VersionUpdater {
         });
         switch (answer.toLowerCase()) {
             case 'a':
-                runCommandOrDie(`git push --atomic origin master ${targetVersion}`)
+                this.pushCommitTag(targetVersion)
                 this.rl.write(`Je hotovo. Tag ${targetVersion} byl odeslán na server.\n`);
                 break;
             case 'n':
@@ -230,6 +220,98 @@ export class VersionUpdater {
         }
 
         return result;
+    }
+
+    canPull(): boolean {
+        runCommandOrDie(`git fetch origin`);
+
+        const aheadBehind = runCommandOrDie(`git rev-list --left-right --count master...origin/master`);
+        const regex = new RegExp('^(\\d*)\\t(\\d*)$', 'gm');
+        let ahead, behind: number;
+        let m;
+        if ((m = regex.exec(aheadBehind)) !== null) {
+            if (m.index === regex.lastIndex) {
+                regex.lastIndex++;
+            }
+            ahead = parseInt(m[1]);
+            behind = parseInt(m[2]);
+        }
+
+        if (behind !== 0) {
+            const changesOnOrigin = runCommandOrDie(`git diff master..origin/master~${behind} --name-only`)
+            const changesOnLocal = runCommandOrDie(`git diff master~${ahead}..origin/master --name-only`)
+
+            const changes: string[] = changesOnOrigin.split(`\n`).filter(item => item.length).concat(...changesOnLocal.split(`\n`).filter(item => item.length));
+
+            return (changes.length !== new Set(changes).size);
+        }
+        return true;
+    }
+
+    pull(): boolean {
+        const result = runCommandOrDie(`git pull --quiet`, true);
+        return result === '0';
+    }
+
+    merge(currentBranch: string): boolean {
+        const result = runCommandOrDie(`git merge ${currentBranch}--quiet`, true);
+        return result === '0';;
+    }
+
+    checkout(): boolean {
+        const result = runCommandOrDie(`git checkout master --quiet`, true);
+        return result === '0';
+    }
+
+    getStagedCount(): number {
+        const result = runCommandOrDie(`git diff --cached --numstat | wc -l`);
+        return parseInt(result);
+    }
+
+    getCurrentBranch(): string {
+        return runCommandOrDie(`git rev-parse --abbrev-ref HEAD`);
+    }
+
+    getCurrentTag(): string {
+        return runCommandOrDie(`git describe --tags --abbrev=0`);
+    }
+
+    getUntaggedCount(currentTag: string): number {
+        const result = runCommandOrDie(`git rev-list ${currentTag}..HEAD | wc -l`)
+        return parseInt(result);
+    }
+
+    getCommitList(currentTag: string): string {
+        return runCommandOrDie(`git rev-list ${currentTag}..HEAD --oneline`);
+    }
+
+    stashSave(): boolean {
+        const result = runCommandOrDie(`git stash save --keep-index`);
+        return result.startsWith('Saved')
+    }
+    stashPop(): void {
+        runCommandOrDie(`git stash pop`);
+    }
+
+    updateChangelog(newEntry: string): void {
+        runCommandOrDie(`sed -n -i "p;2a ${newEntry.replace(/\n/gm, '\\n').replace(/(\"|\`)/gm, '\\$1').replace(/\`/gm, '\`')}\\n" CHANGELOG.md`)
+    }
+
+    add(filename: string): void {
+        runCommandOrDie(`git add ${filename}`)
+    }
+
+    commitTag(targetVersion: string): void {
+        runCommandOrDie(`git commit -m "${targetVersion}" && git tag ${targetVersion}`)
+    }
+
+    pushCommitTag(targetVersion: string): void {
+        runCommandOrDie(`git push --atomic origin master ${targetVersion}`);
+    }
+
+    updatePackageJson(targetVersion: string): boolean {
+        const result = runCommandOrDie(`perl -i -lpe '$k+= s/"v${this.version.major}\.${this.version.minor}\.${this.version.patch}"/"${targetVersion}"/g; END{print "$k"}' package.json`);
+        return (result == "1");
     }
 }
 
