@@ -1,6 +1,6 @@
 {
   "name": "version-updater",
-  "version": "v1.0.2",
+  "version": "v1.1.0",
   "description": "A tool that processes unversioned commits and prepares a new version of the code.",
   "main": "index.js",
   "scripts": {
