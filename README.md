@@ -1,6 +1,12 @@
-# Version publisher
+# Version updater
 
-Nástroj pro vystavení nové verze.
+Nástroj, který zpracuje nezaverzované commity a připraví novou verzi kódu.
+
+Po spuštění se zeptá, o kolik má zvednout verzi (_major_, _minor_ nebo _patch_), seskupí commity podle modulu a typu úpravy (_chore_/_feat_/_fix_) a navrhne uživateli zápis do changelogu.
+
+V případě schválení uživatelem aktualizuje `package.json`, `CHANGELOG.md`, provede commit verze, tag verze, volitelně může provést push commitu i s tagem.
+
+Skript lze spustit v případě, že existuje od posledního tagu nějaký nezaverzovaný commit a zároveň se aktuálním repozitáři nenachází žádné rozpracované (_staged_) soubory.
 
 ## Instalace
 
@@ -23,15 +29,3 @@ Spouští se z linuxové příkazové řádky:
 ```shell
 npm run update-version
 ```
-
-## Jak to funguje
-
-- Skript lze spustit, pokud jsou v aktuálním repozitáři rozpracované (staged) soubory.
-- Ve vedlejší větvi skript nabídne checkout hlavní větve a merge původní, vedlejší větve.
-- Pokud je v hlavní větví, aktualizuje si commity (`pull`)
-- Skript lze spustit, pokud je na lokále od posledního tagu nějaký nezaverzovaný commit.
-- Skript se zeptá, o kolik má zvednout verzi (_major_, _feat/minor_ nebo _fix/patch_).
-  - _TODO: výchozí hodnotu odhadne podle commitů_
-- Skript navrhne uživateli nový záznam changelogu pro nový tag.
-  - _TODO: seskupí commity podle modulu_
-- V případě schválení uživatelem skript aktualizuje `package.json`, `CHANGELOG.md`, provede commit verze, tag verze, push commitu i s tagem.
