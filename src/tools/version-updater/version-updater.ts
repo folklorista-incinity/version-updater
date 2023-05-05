@@ -168,7 +168,7 @@ export class VersionUpdater {
         });
         switch (answer.toLowerCase()) {
             case 'a':
-                const pushCommit = runCommandOrDie(`git push --atomic origin master ${targetVersion}`)
+                runCommandOrDie(`git push --atomic origin master ${targetVersion}`)
                 this.rl.write(`Je hotovo. Tag ${targetVersion} byl odeslán na server.\n`);
                 break;
             case 'n':
