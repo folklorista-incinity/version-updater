@@ -1,5 +1,11 @@
 ## Change Log
 
+### v1.1.1 (2023-05-09)
+
+- **fix:** VersionUpdater - úprava package.json
+- **fix:** .gitignore - ignored blocks, tmp
+- **chore:** package.lock - updated
+
 ### v1.1.0 (2023-05-05)
 
 - **chore:** VersionUpdater - refactoring
