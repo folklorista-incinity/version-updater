@@ -1,5 +1,9 @@
 ## Change Log
 
+### v1.2.0 (2023-05-09)
+
+- **chore:** VersionUpdater - refactoring (libs: file, git)
+
 ### v1.1.3 (2023-05-09)
 
 - **fix:** VersionUpdater - doplnění upozornění při chybě git operace
