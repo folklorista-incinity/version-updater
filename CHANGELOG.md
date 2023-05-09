@@ -1,5 +1,9 @@
 ## Change Log
 
+### v1.1.2 (2023-05-09)
+
+- **fix:** .gitignore - tgz
+
 ### v1.1.1 (2023-05-09)
 
 - **fix:** VersionUpdater - úprava package.json
