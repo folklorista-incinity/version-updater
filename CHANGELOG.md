@@ -1,5 +1,9 @@
 ## Change Log
 
+### v1.1.3 (2023-05-09)
+
+- **fix:** VersionUpdater - doplnění upozornění při chybě git operace
+
 ### v1.1.2 (2023-05-09)
 
 - **fix:** .gitignore - tgz
