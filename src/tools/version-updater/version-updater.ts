@@ -38,7 +38,7 @@ export class VersionUpdater {
             switch (answer.toLowerCase()) {
                 case 'a':
                     if (!this.checkout()) {
-                        this.rl.write(`Checkout nelze provést.\n`);
+                        this.rl.write(`Automatický checkout nelze provést.\n`);
                         return this.stop();
                     }
                     if (!this.canPull()) {
@@ -46,11 +46,11 @@ export class VersionUpdater {
                         return this.stop();
                     }
                     if (!this.pull()) {
-                        this.rl.write(`Pull nelze provést.\n`);
+                        this.rl.write(`Automatický pull nelze provést.\n`);
                         return this.stop();
                     }
                     if (!this.merge(currentBranch)) {
-                        this.rl.write(`Merge nelze provést.\n`);
+                        this.rl.write(`Automatický merge nelze provést.\n`);
                         return this.stop();
                     }
                     break;
@@ -65,7 +65,7 @@ export class VersionUpdater {
                 return this.stop();
             }
             if (!this.pull()) {
-                this.rl.write(`Pull nelze provést.\n`);
+                this.rl.write(`Automatický pull nelze provést.\n`);
                 return this.stop();
             }
         }
