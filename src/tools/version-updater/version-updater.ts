@@ -129,7 +129,7 @@ export class VersionUpdater {
         const stashed = this.stashSave();
 
         // aktualizuje version v package.json
-        if (this.updatePackageJson(targetVersion)) {
+        if (!this.updatePackageJson(targetVersion)) {
             this.rl.write(`Nepodařilo se aktualizovat verzi v package.json.\n`);
             if (stashed) {
                 this.stashPop();
