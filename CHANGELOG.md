@@ -1,5 +1,8 @@
 ## Change Log
 
+### v1.2.3 (2023-05-24)
+
+
 ### v1.2.2 (2023-05-24)
 
 - **fix:** VersionUpdater - opravy prefixů
