@@ -1,5 +1,9 @@
 ## Change Log
 
+### 1.2.1 (2023-05-24)
+
+- **fix:** VersionUpdater - zohlednění možnosti rozdílných prefixů verzí
+
 ### v1.2.0 (2023-05-09)
 
 - **chore:** VersionUpdater - refactoring (libs: file, git)
