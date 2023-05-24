@@ -214,9 +214,9 @@ export class VersionUpdater {
         });
         switch (answer.toLowerCase()) {
             case "a":
-                pushCommitTag(targetVersion);
+                pushCommitTag(tagPrefix + targetVersion);
                 this.rl.write(
-                    `Je hotovo. Tag ${targetVersion} byl odeslán na server.\n`
+                    `Je hotovo. Tag ${tagPrefix}${targetVersion} byl odeslán na server.\n`
                 );
                 break;
             case "n":
