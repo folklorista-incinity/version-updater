@@ -105,7 +105,7 @@ export class VersionUpdater {
         const packageVersion = require("../../../package.json").version;
         const packagePrefix = getPrefix(packageVersion);
 
-        if (equalVersions(currentTag, packageVersion)) {
+        if (!equalVersions(currentTag, packageVersion)) {
             this.rl.write(
                 `Verze v package.json (${packageVersion}) neodpovídá tagu (${currentTag}).\n`
             );
@@ -158,7 +158,7 @@ export class VersionUpdater {
         }
 
         // náhled changelogu
-        const changelog = this.getChangelogEntry(commitList, targetVersion);
+        const changelog = this.getChangelogEntry(commitList, targetVersion, tagPrefix);
         this.rl.write(
             `Náhled zápisu do changelogu:\n\n    ${changelog.replace(
                 /\n/gm,
@@ -200,7 +200,7 @@ export class VersionUpdater {
         add(`CHANGELOG.md`);
 
         // commit a tag verze
-        commitTag(targetVersion);
+        commitTag(tagPrefix + targetVersion);
 
         if (stashed) {
             stashPop();
@@ -231,11 +231,11 @@ export class VersionUpdater {
         return;
     }
 
-    getChangelogEntry(commitList: string, targetVersion: string): string {
+    getChangelogEntry(commitList: string, targetVersion: string, prefix = ''): string {
         let rows: string[] = [];
 
         const now = new Date();
-        rows.push(`### ${targetVersion} (${now.toISOString().split("T")[0]})\n`);
+        rows.push(`### ${prefix}${targetVersion} (${now.toISOString().split("T")[0]})\n`);
 
         const analyzed = this.analyzeCommits(commitList);
         for (const moduleName in analyzed) {

@@ -30,7 +30,7 @@ export function updatePackageJson(
     prefix = ''
 ): boolean {
     const result = runCommandOrDie(
-        `perl -i -lpe '$k+= s/"${prefix}${version.major}\.${version.minor}\.${version.patch}"/"${targetVersion}"/g; END{print "$k"}' package.json`
+        `perl -i -lpe '$k+= s/"${prefix}${version.major}\.${version.minor}\.${version.patch}"/"${prefix}${targetVersion}"/g; END{print "$k"}' package.json`
     );
     return result == "1";
 }
