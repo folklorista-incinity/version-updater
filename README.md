@@ -4,7 +4,7 @@ Nástroj, který zpracuje nezaverzované commity a připraví novou verzi kódu.
 
 Po spuštění se zeptá, o kolik má zvednout verzi (_major_, _minor_ nebo _patch_), seskupí commity podle modulu a typu úpravy (_chore_/_feat_/_fix_) a navrhne uživateli zápis do changelogu.
 
-V případě schválení uživatelem aktualizuje `package.json`, `CHANGELOG.md`, provede commit verze, tag verze, volitelně může provést push commitu i s tagem.
+V případě schválení uživatelem aktualizuje `package.json`, `CHANGELOG.md`, provede commit verze, tag verze, volitelně může provést push commitu i s tagem. Prefix verze se zachovává - tedy umožňuje, aby v tagu (a v changelogu) byla verze `v1.2.3` a v package.json verze `1.2.3`.
 
 Skript lze spustit v případě, že existuje od posledního tagu nějaký nezaverzovaný commit a zároveň se aktuálním repozitáři nenachází žádné rozpracované (_staged_) soubory.
 
