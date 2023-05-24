@@ -1,5 +1,5 @@
 import * as readline from "readline";
-import { Version, VersionPart } from "./lib/version";
+import { Version, VersionPart, equalVersions, getPrefix } from "./lib/version";
 import {
     updateChangelog,
     updatePackageJson
@@ -99,10 +99,13 @@ export class VersionUpdater {
         }
 
         const currentTag = getCurrentTag();
+        const tagPrefix = getPrefix(currentTag);
 
         // kontrola, že aktuální verze sedí s verzí v package.json
         const packageVersion = require("../../../package.json").version;
-        if (currentTag != packageVersion) {
+        const packagePrefix = getPrefix(packageVersion);
+
+        if (equalVersions(currentTag, packageVersion)) {
             this.rl.write(
                 `Verze v package.json (${packageVersion}) neodpovídá tagu (${currentTag}).\n`
             );
@@ -183,7 +186,7 @@ export class VersionUpdater {
         const stashed = stashSave();
 
         // aktualizuje version v package.json
-        if (!updatePackageJson(targetVersion, this.version)) {
+        if (!updatePackageJson(targetVersion, this.version, packagePrefix)) {
             this.rl.write(`Nepodařilo se aktualizovat verzi v package.json.\n`);
             if (stashed) {
                 stashPop();

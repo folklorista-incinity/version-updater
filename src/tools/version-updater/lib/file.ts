@@ -26,10 +26,11 @@ export function updateChangelog(newEntry: string): void {
 
 export function updatePackageJson(
     targetVersion: string,
-    version: Version
+    version: Version,
+    prefix = ''
 ): boolean {
     const result = runCommandOrDie(
-        `perl -i -lpe '$k+= s/"v${version.major}\.${version.minor}\.${version.patch}"/"${targetVersion}"/g; END{print "$k"}' package.json`
+        `perl -i -lpe '$k+= s/"${prefix}${version.major}\.${version.minor}\.${version.patch}"/"${targetVersion}"/g; END{print "$k"}' package.json`
     );
     return result == "1";
 }

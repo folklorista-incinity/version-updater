@@ -16,7 +16,7 @@ export class Version {
     public patch: number = 0;
 
     public constructor(tag: string) {
-        const regex = new RegExp('^v(\\d*)\\.(\\d*)\\.(\\d*)$', 'gm')
+        const regex = new RegExp(`^[^\\d]*(\\d*)\\.(\\d*)\\.(\\d*)$`, 'gm')
 
         let m;
 
@@ -42,8 +42,8 @@ export class Version {
         }
     }
 
-    public getTag(): string {
-        return `v${this.major}.${this.minor}.${this.patch}`;
+    public getTag(prefix = ''): string {
+        return `${prefix}${this.major}.${this.minor}.${this.patch}`;
     }
 
     public getVersion(): VersionValue {
@@ -74,4 +74,26 @@ export class Version {
         }
         return result;
     }
+}
+
+export function getPrefix(version: string): string {
+    const regex = new RegExp('^([^\\d]*)(\\d+\\.\\d+\\.\\d+)$', 'mg')
+    const m = regex.exec(version);
+    if (m !== null) {
+        return m[1];
+    }
+    return '';
+}
+
+function getVersion(version: string): string {
+    const regex = new RegExp('^([^\\d]*)(\\d+\\.\\d+\\.\\d+)$', 'mg')
+    const m = regex.exec(version);
+    if (m !== null) {
+        return m[2];
+    }
+    return '';
+}
+
+export function equalVersions(versionA: string, versionB: string): boolean {
+    return getVersion(versionA) === getVersion(versionB);
 }
