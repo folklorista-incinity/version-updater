@@ -1,6 +1,6 @@
 ## Change Log
 
-### 1.2.1 (2023-05-24)
+### v1.2.1 (2023-05-24)
 
 - **fix:** VersionUpdater - zohlednění možnosti rozdílných prefixů verzí
 
